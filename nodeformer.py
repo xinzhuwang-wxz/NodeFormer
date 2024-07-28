@@ -378,3 +378,4 @@ class NodeFormer(nn.Module):
             return x_out, link_loss_
         else:
             return x_out
+
