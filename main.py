@@ -16,7 +16,9 @@ from parse import parse_method, parser_add_main_args
 import time
 
 import warnings
+
 warnings.filterwarnings('ignore')
+
 
 # NOTE: for consistent data splits, see data_utils.rand_train_test_idx
 def fix_seed(seed):
@@ -25,6 +27,7 @@ def fix_seed(seed):
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
     torch.backends.cudnn.deterministic = True
+
 
 ### Parse args ###
 parser = argparse.ArgumentParser(description='General Training Pipeline')
@@ -63,7 +66,7 @@ else:
 if args.dataset in ('mini', '20news'):
     adj_knn = kneighbors_graph(dataset.graph['node_feat'], n_neighbors=args.knn_num, include_self=True)
     edge_index = torch.tensor(adj_knn.nonzero(), dtype=torch.long)
-    dataset.graph['edge_index']=edge_index
+    dataset.graph['edge_index'] = edge_index
 
 ### Basic information of datasets ###
 n = dataset.graph['num_nodes']
@@ -108,7 +111,7 @@ adjs = []
 adj, _ = remove_self_loops(dataset.graph['edge_index'])
 adj, _ = add_self_loops(adj, num_nodes=n)
 adjs.append(adj)
-for i in range(args.rb_order - 1): # edge_index of high order adjacency
+for i in range(args.rb_order - 1):  # edge_index of high order adjacency
     adj = adj_mul(adj, adj, n)
     adjs.append(adj)
 dataset.graph['adjs'] = adjs
@@ -121,7 +124,7 @@ for run in range(args.runs):
         split_idx = split_idx_lst[run]
     train_idx = split_idx['train'].to(device)
     model.reset_parameters()
-    optimizer = torch.optim.Adam(model.parameters(),weight_decay=args.weight_decay, lr=args.lr)
+    optimizer = torch.optim.Adam(model.parameters(), weight_decay=args.weight_decay, lr=args.lr)
     best_val = float('-inf')
 
     for epoch in range(args.epochs):

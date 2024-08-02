@@ -15,7 +15,7 @@ def eval_f1(y_true, y_pred):
     return sum(acc_list) / len(acc_list)
 
 
-def eval_acc(y_true, y_pred):
+def eval_acc(y_true, y_pred): # y_true: (N, C), y_pred: (N, C)
     acc_list = []
     y_true = y_true.detach().cpu().numpy()
     y_pred = y_pred.argmax(dim=-1, keepdim=True).detach().cpu().numpy()
@@ -28,7 +28,8 @@ def eval_acc(y_true, y_pred):
     return sum(acc_list) / len(acc_list)
 
 
-def eval_rocauc(y_true, y_pred):
+
+def eval_rocauc(y_true, y_pred): # y_true: (N, C), y_pred: (N, C)
     """ adapted from ogb
     https://github.com/snap-stanford/ogb/blob/master/ogb/nodeproppred/evaluate.py"""
     rocauc_list = []

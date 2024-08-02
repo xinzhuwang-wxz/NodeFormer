@@ -62,6 +62,22 @@ def parse_method(args, dataset, n, c, d, device):
                     num_heads=args.num_heads, use_bn=args.use_bn, nb_random_features=args.M,
                     use_gumbel=args.use_gumbel, use_residual=args.use_residual, use_act=args.use_act, use_jk=args.use_jk,
                     nb_gumbel_sample=args.K, rb_order=args.rb_order, rb_trans=args.rb_trans).to(device)
+        # 解释nodeformer的参数
+        # d: input feature dimension
+        # hidden_channels: hidden feature dimension
+        # c: number of classes
+        # num_layers: number of GNN layers
+        # dropout: dropout rate
+        # num_heads: number of attention heads
+        # use_bn: use batch normalizatione
+        # nb_random_features: number of random features
+        # use_gumbel: use gumbel softmax for message passing
+        # use_residual: use residual link for each GNN layer
+        # use_act: use non-linearity for each layer
+        # use_jk: concat the layer-wise results in the final layer
+        # nb_gumbel_sample: num of samples for gumbel softmax sampling
+        # rb_order: order for relational bias, 0 for not use
+
     else:
         raise ValueError('Invalid method')
     return model
