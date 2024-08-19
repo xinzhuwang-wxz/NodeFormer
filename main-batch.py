@@ -42,7 +42,7 @@ else:
 ### Load and preprocess data ###
 dataset = load_dataset(args.data_dir, args.dataset, args.sub_dataset)
 
-if len(dataset.label.shape) == 1:
+if len(dataset.label.shape) == 1: # non-one-hot labels
     dataset.label = dataset.label.unsqueeze(1)
 
 # get the splits for all runs
@@ -97,13 +97,14 @@ adjs = []
 adj, _ = remove_self_loops(edge_index)
 adj, _ = add_self_loops(adj, num_nodes=n)
 adjs.append(adj)
+
 for i in range(args.rb_order - 1): # edge_index of high order adjacency
     adj = adj_mul(adj, adj, n)
     adjs.append(adj)
 dataset.graph['adjs'] = adjs
 
 if args.dataset in ('yelp-chi', 'deezer-europe', 'twitch-e', 'fb100', 'ogbn-proteins'):
-    if dataset.label.shape[1] == 1:
+    if dataset.label.shape[1] == 1: # non-one-hot labels
         true_label = F.one_hot(dataset.label, dataset.label.max() + 1).squeeze(1)
     else:
         true_label = dataset.label
