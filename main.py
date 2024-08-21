@@ -42,6 +42,8 @@ if args.cpu:
 else:
     device = torch.device("cuda:" + str(args.device)) if torch.cuda.is_available() else torch.device("cpu")
 
+print(device)
+
 ### Load and preprocess data ###
 dataset = load_dataset(args.data_dir, args.dataset, args.sub_dataset)
 
@@ -56,7 +58,7 @@ if args.rand_split:
 elif args.rand_split_class:
     split_idx_lst = [dataset.get_idx_split(split_type='class', label_num_per_class=args.label_num_per_class)
                      for _ in range(args.runs)]
-elif args.dataset in ['ogbn-proteins', 'ogbn-arxiv', 'ogbn-products', 'amazon2m']:
+elif args.dataset in ['ogbn-proteins', 'ogbn-arxiv', 'ogbn-products', 'amazon2m', 'trihiggs']:
     split_idx_lst = [dataset.load_fixed_splits()
                      for _ in range(args.runs)]
 else:

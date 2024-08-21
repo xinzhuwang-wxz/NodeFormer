@@ -5,6 +5,7 @@ import torch
 import torch.nn.functional as F
 import scipy
 import scipy.io
+from scipy.spatial import distance_matrix
 from sklearn.preprocessing import label_binarize
 import torch_geometric.transforms as T
 
@@ -19,9 +20,18 @@ from google_drive_downloader import GoogleDriveDownloader as gdd
 import networkx as nx
 import scipy.sparse as sp
 
+
 ### goooooood ###
 from ogb.nodeproppred import NodePropPredDataset
+### extra ###
+import uproot
+import torch
+from sklearn.preprocessing import StandardScaler
+from torch.utils.data import Dataset
+import numpy as np
 
+from sklearn.neighbors import NearestNeighbors
+import torch
 
 class NCDataset(object):
     def __init__(self, name):
@@ -53,7 +63,7 @@ class NCDataset(object):
         self.graph = {}
         self.label = None
 
-    def get_idx_split(self, split_type='random', train_prop=.5, valid_prop=.25, label_num_per_class=20):
+    def get_idx_split(self, split_type='random', train_prop=.5, valid_prop=.25, label_num_per_class=2):
         """
         split_type: 'random' for random splitting, 'class' for splitting with equal node num per class
         train_prop: The proportion of dataset for train split. Between 0 and 1.
@@ -84,6 +94,34 @@ class NCDataset(object):
 
     def __repr__(self):
         return '{}({})'.format(self.__class__.__name__, len(self))
+
+
+class TriHiggsDataset(Dataset):
+    def __init__(self, root_files, branches, label_branch, scaler=None):
+        self.data = []
+        self.labels = []
+        for file in root_files:
+            with uproot.open(file) as f:
+                tree = f["HHHNtuple"]
+                features = np.column_stack([tree[branch].array(library="np") for branch in branches])
+                labels = tree[label_branch].array(library="np")
+
+                if scaler is not None:
+                    features = scaler.transform(features)
+
+                self.data.append(torch.tensor(features, dtype=torch.float))
+                self.labels.append(torch.tensor(labels, dtype=torch.long))
+
+        self.data = torch.cat(self.data, dim=0)
+        self.labels = torch.cat(self.labels, dim=0).unsqueeze(1)
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        return self.data[idx], self.labels[idx]
+
+
 
 
 def load_dataset(data_dir, dataname, sub_dataname=''):
@@ -122,9 +160,11 @@ def load_dataset(data_dir, dataname, sub_dataname=''):
     elif dataname == 'yelp-chi':
         dataset = load_yelpchi_dataset(data_dir)
     elif dataname == 'mini':
-        dataset =load_mini_imagenet(data_dir)
+        dataset = load_mini_imagenet(data_dir)
     elif dataname == '20news':
-        dataset=load_20news(data_dir)
+        dataset = load_20news(data_dir)
+    elif dataname == 'trihiggs':
+        dataset = load_trihiggs_dataset(data_dir)
     else:
         raise ValueError('Invalid dataname')
     return dataset
@@ -268,11 +308,13 @@ def load_arxiv_year_dataset(data_dir, nclass=5):
 def load_proteins_dataset(data_dir):
     ogb_dataset = NodePropPredDataset(name='ogbn-proteins', root=f'{data_dir}/ogb')
     dataset = NCDataset('ogbn-proteins')
+
     def protein_orig_split(**kwargs):
         split_idx = ogb_dataset.get_idx_split()
         return {'train': torch.as_tensor(split_idx['train']),
                 'valid': torch.as_tensor(split_idx['valid']),
                 'test': torch.as_tensor(split_idx['test'])}
+
     dataset.load_fixed_splits = protein_orig_split
     dataset.graph, dataset.label = ogb_dataset.graph, ogb_dataset.labels
 
@@ -285,6 +327,7 @@ def load_proteins_dataset(data_dir):
     dataset.graph['node_feat'] = edge_index_.mean(dim=1)
     dataset.graph['edge_feat'] = None
     return dataset
+
 
 def load_ogb_dataset(data_dir, name):
     dataset = NCDataset(name)
@@ -302,6 +345,7 @@ def load_ogb_dataset(data_dir, name):
     dataset.load_fixed_splits = ogb_idx_to_tensor
     dataset.label = torch.as_tensor(ogb_dataset.labels).reshape(-1, 1)
     return dataset
+
 
 def load_amazon2m_dataset(data_dir):
     ogb_dataset = NodePropPredDataset(name='ogbn-products', root=f'{data_dir}/ogb')
@@ -326,8 +370,10 @@ def load_amazon2m_dataset(data_dir):
             np.savetxt(dir + '/amazon2m_valid.txt', tensor_split_idx['valid'], fmt='%d')
             np.savetxt(dir + '/amazon2m_test.txt', tensor_split_idx['test'], fmt='%d')
         return tensor_split_idx
+
     dataset.load_fixed_splits = load_fixed_splits
     return dataset
+
 
 def load_pokec_mat(data_dir):
     """ requires pokec.mat """
@@ -623,9 +669,9 @@ def load_20news(data_dir, n_remove=0):
     num_nodes = features.shape[0]
 
     if n_remove > 0:
-        num_nodes-=n_remove
-        features=features[:num_nodes,:]
-        y=y[:num_nodes]
+        num_nodes -= n_remove
+        features = features[:num_nodes, :]
+        y = y[:num_nodes]
 
     dataset = NCDataset('20news')
     dataset.graph = {'edge_index': None,
@@ -635,6 +681,56 @@ def load_20news(data_dir, n_remove=0):
     dataset.label = torch.LongTensor(y)
 
     return dataset
+
+def load_trihiggs_dataset():
+
+    root_files = ["/Users/physicsboy/Desktop/respect/rawData/v6_new/triHiggs_ML_train.root", "/Users/physicsboy/Desktop/respect/rawData/v6_new/triHiggs_ML_validation.root",
+                      "/Users/physicsboy/Desktop/respect/rawData/v6_new/triHiggs_ML_test.root"]
+    branches = ['mHcosTheta', 'aplan3dv2b', 'sphere3dv2b', 'eta_mHHH', 'dRH1', 'dRH2', 'dRH3', 'rmsdRBB', 'skewnessdABB', 'TotalHiggsJetPt']
+    label_branch = "isSignal"
+
+    # 创建并标准化数据
+    dataset = TriHiggsDataset(root_files, branches, label_branch)
+    scaler = StandardScaler()
+    dataset.data = torch.tensor(scaler.fit_transform(dataset.data), dtype=torch.float)
+
+    # 使用 NearestNeighbors 计算最近邻
+    k = 5
+    nbrs = NearestNeighbors(n_neighbors=k + 1, algorithm='auto').fit(dataset.data)
+    distances, indices = nbrs.kneighbors(dataset.data) # indices.shape = (n_samples, n_neighbors)
+    # 初始化边索引列表
+    edge_index = []
+
+    # 遍历每个节点，找到 k 个最近邻节点
+    for i in range(indices.shape[0]):
+        for neighbor in indices[i][1:]:  # 排除自己
+            edge_index.append([i, neighbor])
+
+
+    # 将边索引列表转换为 PyTorch 张量并转置
+    edge_index = torch.tensor(edge_index, dtype=torch.long).t().contiguous() # shape = (2, num_edges)
+
+
+    # 创建NCDataset对象
+    nc_dataset = NCDataset("trihiggs")
+    nc_dataset.graph = {
+            'edge_index': edge_index,  # 这里你可以选择是否添加边信息
+            'edge_feat': None,
+            'node_feat': dataset.data,
+            'num_nodes': len(dataset)
+        }
+    nc_dataset.label = dataset.labels
+    return nc_dataset
+
+if __name__ == '__main__':
+    dataset = load_trihiggs_dataset()
+    print(dataset.graph['node_feat'].shape)
+    print(dataset.graph['edge_index'].shape)
+    print(dataset.label.shape)
+    print(dataset.graph['num_nodes '])
+
+
+
 
 
 

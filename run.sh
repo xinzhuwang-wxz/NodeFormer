@@ -49,4 +49,10 @@ python main.py --dataset mini --metric acc --rand_split --method nodeformer --lr
 python main.py --dataset 20news --metric acc --rand_split --method nodeformer --lr 0.005\
  --weight_decay 0.05 --dropout 0.3 --num_layers 2 --hidden_channels 128 --num_heads 8\
   --rb_order 0 --rb_trans sigmoid --lamda 0 --M 30 --K 10 --use_bn --use_residual --use_gumbel\
-   --runs 5 --epochs 300 --device 1 
+   --runs 5 --epochs 300 --device 1
+
+# run trihiggs
+python main.py --dataset trihiggs --metric acc --rand_split --method nodeformer --lr 0.001\
+ --weight_decay 5e-3 --num_layers 2 --hidden_channels 64 --num_heads 4\
+  --rb_order 0 --rb_trans sigmoid --lamda 0 --M 30 --K 10 --use_bn --use_residual --use_gumbel\
+   --runs 5 --epochs 2 --device 1
